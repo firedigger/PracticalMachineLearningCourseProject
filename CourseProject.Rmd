@@ -1,0 +1,65 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Makarov Alexandr"
+date: "Wednesday, July 23, 2014"
+output: html_document
+---
+First, let's load the data
+```{r}
+data <- read.csv(file = "pml-training.csv")
+dim(data)
+X <- data[,-160]
+y <- data$classe
+```
+Let's remove features, that will not help us classificate. Examples are "username", "timestamp", "numwindow"
+```{r}
+useless_features <- 1:7
+X <- X[,-useless_features]
+```
+The rest of the features are all numeric, though R recognized some of them as factors. Let's change it.
+```{r}
+for(i in 1:dim(X)[2])
+{
+  X[,i] <- as.numeric(X[,i])
+}
+```
+For empty values this method converts them into 1. It is a way to deal with, though not the best. Also I removed features with NA values.
+```{r}
+bad_features <- c()
+
+for(i in 1:dim(X)[2])
+{
+  if (sum(is.na(X[,i]))>0)
+  {
+    bad_features <- append(bad_features,i)
+  }
+}
+X <- X[,-bad_features]
+```
+Then, by looking at the data distribution (which I will not include here) I found 2 noise elements. I am getting rid of them.
+```{r}
+noise <- c(5373,9274)
+X = X[-noise,]
+y = y[-noise]
+```
+Distributions have normalized. Now we can build our predictor. I will use Random Forest as it is a simple way to get high accuracy. We have 85 variables. I expect the out of bag error to be 90%+.
+Let's see its performance using 10-k-fold cross-validation. My past experience with machine learning showed me that it is a reasonable choice.
+```{r}
+library(caret)
+library(randomForest)
+
+CV <- 10
+total <- 0
+folds <- createFolds(y,CV)
+for(i in 1:CV)
+{
+  model <- randomForest(x=X[folds[[i]],],y=y[folds[[i]]])
+  result <- confusionMatrix(predict(model,X[-folds[[i]],]),y[-folds[[i]]])
+  total <- total + result$overall[1]
+}
+total <- total / CV
+print(total)
+```
+So the real accuracy is nearly 95%, which is good.
+
+Thanks for reading.
